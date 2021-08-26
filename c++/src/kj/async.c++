@@ -1091,8 +1091,6 @@ Maybe<Own<Event>> XThreadEvent::fire() {
     };
     KJ_IF_MAYBE(n, promiseNode) {
       n->get()->onReady(this);
-      // TODO(perf): Immediately-ready promise coroutine optimization here? We should be able to
-      //   just `if (isNext()) { disarm(); return fire(); }`, right?
     } else {
       return Own<Event>(this, DISPOSER);
     }
@@ -1839,7 +1837,6 @@ void waitImpl(Own<_::PromiseNode>&& node, _::ExceptionOrValue& result, WaitScope
 
     node->setSelfPointer(&node);
     node->onReady(fiber);
-    // TODO(perf): If fiber->isNext(), can we immediately node->get() and avoid a context switch?
 
     fiber->currentInner = node;
     KJ_DEFER(fiber->currentInner = nullptr);
@@ -2354,10 +2351,6 @@ ChainPromiseNode::ChainPromiseNode(Own<PromiseNode> innerParam)
     : state(STEP1), inner(kj::mv(innerParam)) {
   inner->setSelfPointer(&inner);
   inner->onReady(this);
-  // TODO(perf): It'd be nice to implement the immediate-execution optimization here for coroutines'
-  //   benefit, but it's difficult to avoid stack overflows from long chains of onReady() -> fire()
-  //   code paths. It seems like we need to make co_await run a miniature event loop until it would
-  //   block.
 }
 
 ChainPromiseNode::~ChainPromiseNode() noexcept(false) {}
@@ -2473,21 +2466,7 @@ void ChainPromiseNode::traceEvent(TraceBuilder& builder) {
 // -------------------------------------------------------------------
 
 ExclusiveJoinPromiseNode::ExclusiveJoinPromiseNode(Own<PromiseNode> left, Own<PromiseNode> right)
-    : left(*this, kj::mv(left)), right(*this, kj::mv(right)) {
-  // Optimization: If one of our branches is next in the event loop, we don't need to wait, and can
-  // fire() away. If In this case, the other branch is canceled and a coroutine awaiting the
-  // join-node can execute without suspension.
-  //
-  // We cannot perform this check in Branch's constructor, because fire() requires that both
-  // branches have already been constructed.
-  for (auto branch: { &this->left, &this->right }) {
-    if (branch->isNext()) {
-      branch->disarm();
-      KJ_ASSERT(branch->fire() == nullptr);
-      break;
-    }
-  }
-}
+    : left(*this, kj::mv(left)), right(*this, kj::mv(right)) {}
 
 ExclusiveJoinPromiseNode::~ExclusiveJoinPromiseNode() noexcept(false) {}
 
@@ -2518,9 +2497,6 @@ ExclusiveJoinPromiseNode::Branch::Branch(
     : joinNode(joinNode), dependency(kj::mv(dependencyParam)) {
   dependency->setSelfPointer(&dependency);
   dependency->onReady(this);
-  // We don't optimize for immediately-ready promises here, because fire() requires that `joinNode`
-  // has fully constructed both branches. Instead, `ExclusiveJoinPromiseNode`'s constructor performs
-  // the isNext() checks.
 }
 
 ExclusiveJoinPromiseNode::Branch::~Branch() noexcept(false) {}
@@ -2613,13 +2589,6 @@ ArrayJoinPromiseNodeBase::Branch::Branch(
     : joinNode(joinNode), dependency(kj::mv(dependencyParam)), output(output) {
   dependency->setSelfPointer(&dependency);
   dependency->onReady(this);
-  // Optimization: If we're next in the event loop, we don't need to wait, and can fire() away. If
-  // all branches on our join-node fire like this, then a coroutine awaiting the join-node can
-  // execute without suspension.
-  if (isNext()) {
-    disarm();
-    KJ_ASSERT(fire() == nullptr);
-  }
 }
 
 ArrayJoinPromiseNodeBase::Branch::~Branch() noexcept(false) {}
@@ -2669,17 +2638,9 @@ EagerPromiseNodeBase::EagerPromiseNodeBase(
     : dependency(kj::mv(dependencyParam)), resultRef(resultRef) {
   dependency->setSelfPointer(&dependency);
   dependency->onReady(this);
-  // We don't implement the immediate-execution optimization here, because `resultRef` points to
-  // uninitialized memory in our subclass at the moment. Instead, we'll do it in onReady().
 }
 
 void EagerPromiseNodeBase::onReady(Event* event) noexcept {
-  // Optimization: If we're next in the event loop, we don't need to wait, and can fire() away. This
-  // allows coroutines which await an eager promise to execute without suspending.
-  if (isNext()) {
-    disarm();
-    KJ_ASSERT(fire() == nullptr);
-  }
   onReadyEvent.init(event);
 }
 

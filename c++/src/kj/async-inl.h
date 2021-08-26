@@ -170,10 +170,13 @@ public:
   // True if the Event has been armed and is next in line to be fired. This can be used after
   // calling PromiseNode::onReady(event) to determine if a promise being waited is immediately
   // ready, in which case continuations may be optimistically run without returning to the event
-  // loop.
+  // loop. Note that this optimization is only valid if we know that we would otherwise immediately
+  // return to the event loop without running more application code. So this turns out to be useful
+  // in fairly narrow circumstances, chiefly when a coroutine is about to suspend, but discovers it
+  // doesn't need to.
   //
-  // Note that this returns false if the event loop is not currently running. This ensures that
-  // promise continuations don't execute except under a call to .wait().
+  // Returns false if the event loop is not currently running. This ensures that promise
+  // continuations don't execute except under a call to .wait().
 
   void disarm();
   // If the event is armed but hasn't fired, cancel it. (Destroying the event does this

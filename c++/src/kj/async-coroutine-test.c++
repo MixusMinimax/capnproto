@@ -114,25 +114,6 @@ KJ_TEST("co_awaiting an immediate promise does not suspend if the event loop is 
     KJ_EXPECT(count == 2);
   }).eagerlyEvaluate(nullptr).wait(waitScope);
 
-  kj::evalLater([&]() {
-    // ArrayPromiseNode implements the optimization.
-
-    size_t count = 0;
-
-    // Try a more complex example.
-    auto builder = kj::heapArrayBuilder<kj::Promise<void>>(4);
-    builder.add(kj::Promise<void>(kj::READY_NOW));
-    builder.add(kj::Promise<int>(123).ignoreResult());
-    builder.add(kj::evalNow([](){ return kj::Promise<void>(kj::READY_NOW); }).then([](){}));
-    builder.add(countDtorsAroundAwait(count, kj::READY_NOW));
-
-    auto promise = kj::joinPromises(builder.finish());
-    auto coroPromise = countDtorsAroundAwait(count, kj::mv(promise));
-
-    // Both coroutines completed and unwound their frames.
-    KJ_EXPECT(count == 4, count);
-  }).eagerlyEvaluate(nullptr).wait(waitScope);
-
 #if 0
   kj::evalLater([&]() {
     // ChainPromiseNode implements the optimization.
@@ -156,39 +137,6 @@ KJ_TEST("co_awaiting an immediate promise does not suspend if the event loop is 
     KJ_EXPECT(lastSeenArg == 246);
   }).eagerlyEvaluate(nullptr).wait(waitScope);
 #endif
-
-  kj::evalLater([&]() {
-    // EagerPromiseNode implements the optimization.
-
-    size_t count = 0;
-
-    auto promise = kj::Promise<void>(READY_NOW).eagerlyEvaluate(nullptr);
-    auto coroPromise = countDtorsAroundAwait(count, kj::mv(promise));
-
-    KJ_EXPECT(count == 2);
-  }).eagerlyEvaluate(nullptr).wait(waitScope);
-
-  kj::evalLater([&]() {
-    // ExclusiveJoinPromiseNode implements the optimization (left).
-
-    size_t count = 0;
-
-    auto promise = kj::Promise<void>(READY_NOW).exclusiveJoin(NEVER_DONE);
-    auto coroPromise = countDtorsAroundAwait(count, kj::mv(promise));
-
-    KJ_EXPECT(count == 2);
-  }).eagerlyEvaluate(nullptr).wait(waitScope);
-
-  kj::evalLater([&]() {
-    // ExclusiveJoinPromiseNode implements the optimization (right).
-
-    size_t count = 0;
-
-    auto promise = kj::Promise<void>(NEVER_DONE).exclusiveJoin(READY_NOW);
-    auto coroPromise = countDtorsAroundAwait(count, kj::mv(promise));
-
-    KJ_EXPECT(count == 2);
-  }).eagerlyEvaluate(nullptr).wait(waitScope);
 }
 
 KJ_TEST("co_awaiting an immediate promise suspends if the event loop is not running") {
