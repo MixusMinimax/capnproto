@@ -122,6 +122,8 @@ while [ $# -gt 0 ]; do
       shift
       ;;
     clang* )
+      # Need to set CC as well for configure to handle -fcoroutines-ts.
+      export CC=clang${1#clang}
       export CXX=clang++${1#clang}
       if [ "$1" != "clang-5.0" ]; then
         export LIB_FUZZING_ENGINE=-fsanitize=fuzzer
@@ -525,6 +527,19 @@ echo "========================================================================="
 
 doit ./configure --disable-shared CXXFLAGS="$CXXFLAGS -fno-rtti -fno-exceptions $DISABLE_OPTIMIZATION_IF_GCC"
 doit make -j$PARALLEL check
+
+if [ $IS_CLANG = yes ]; then
+  doit make distclean
+
+  echo "========================================================================="
+  echo "Testing with -fcoroutines-ts"
+  echo "========================================================================="
+
+  doit ./configure --disable-shared \
+      CXXFLAGS="$CXXFLAGS -std=gnu++17 -fcoroutines-ts -stdlib=libc++" \
+      LDFLAGS="-fcoroutines-ts -stdlib=libc++"
+  doit make -j$PARALLEL check
+fi
 
 if [ "x`uname`" = xLinux ]; then
   doit make distclean
