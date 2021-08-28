@@ -1840,8 +1840,8 @@ public:
   // These adjust the suspension behavior of coroutines immediately upon initiation, and immediately
   // after completion.
   //
-  // The initial suspension point could allow us to defer the initial execution of a coroutine with
-  // evalLater(), for instance.
+  // The initial suspension point could allow us to defer the initial synchronous execution of a
+  // coroutine -- everything before its first co_await, that is.
   //
   // The final suspension point is useful to delay deallocation of the coroutine frame to match the
   // lifetime of the enclosing promise.
@@ -1917,9 +1917,10 @@ class Coroutine final: public CoroutineBase,
   //
   // We can also customize how await-expressions are transformed within `kj::Promise<T>`-based
   // coroutines by implementing an `await_transform(P)` member function, where `P` is some type for
-  // which we want to implement co_await support, e.g. `kj::Promise<U>`. This feature is useful
-  // to provide a more optimized `kj::EventLoop` integration when the coroutine's return type and
-  // the await-expression's type are both `kj::Promise` instantiations.
+  // which we want to implement co_await support, e.g. `kj::Promise<U>`. This feature allows us to
+  // provide an optimized `kj::EventLoop` integration when the coroutine's return type and the
+  // await-expression's type are both `kj::Promise` instantiations -- see further comments under
+  // `await_transform()`.
 
 public:
   using Handle = stdcoro::coroutine_handle<Coroutine<T>>;
@@ -2006,11 +2007,8 @@ public:
   // This could return "`node->get()` is safe to call" instead, which would make suspension-less
   // co_awaits possible for immediately-fulfilled promises. However, we need an Event to figure that
   // out, and we won't have access to the Coroutine Event until await_suspend() is called. So, we
-  // must return false here. But read on, because await_suspend() has a trick up its sleeve to
-  // enable suspension-less co_awaits!
-  //
-  // We could also solve this by giving Awaiters a dummy Event that get immediately disarmed, or by
-  // adding a new isReady() virtual function to PromiseNode which everyone would have to implement.
+  // must return false here. Fortunately, await_suspend() has a trick up its sleeve to enable
+  // suspension-less co_awaits.
 
 protected:
   void getImpl(ExceptionOrValue& result);

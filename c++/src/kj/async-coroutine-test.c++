@@ -81,8 +81,9 @@ kj::Promise<void> countDtorsAroundAwait(size_t& count, kj::Promise<void> promise
 };
 
 KJ_TEST("co_awaiting an immediate promise does not suspend if the event loop is empty and running") {
-  // Some PromiseNode implementations contain optimizations which allow us to avoid suspending the
-  // coroutine and instead immediately call PromiseNode::get() and proceed with execution.
+  // The coroutine PromiseNode implementation contains an optimization which allows us to avoid
+  // suspending the coroutine and instead immediately call PromiseNode::get() and proceed with
+  // execution.
 
   EventLoop loop;
   WaitScope waitScope(loop);
@@ -113,30 +114,6 @@ KJ_TEST("co_awaiting an immediate promise does not suspend if the event loop is 
     KJ_EXPECT(evalLaterRan == true);
     KJ_EXPECT(count == 2);
   }).eagerlyEvaluate(nullptr).wait(waitScope);
-
-#if 0
-  kj::evalLater([&]() {
-    // ChainPromiseNode implements the optimization.
-    //
-    // TODO(perf): Actually, it does not; see comment in ChainPromiseNode constructor.
-
-    size_t count = 0;
-    int lastSeenArg = 0;
-
-    auto promise = kj::Promise<int>(123).then([&](int arg) -> kj::Promise<int> {
-      lastSeenArg = arg;
-      return arg + 123;
-    }).then([&](int arg) -> kj::Promise<void> {
-      lastSeenArg = arg;
-      return kj::READY_NOW;
-    });
-
-    auto coroPromise = countDtorsAroundAwait(count, kj::mv(promise));
-
-    KJ_EXPECT(count == 2);
-    KJ_EXPECT(lastSeenArg == 246);
-  }).eagerlyEvaluate(nullptr).wait(waitScope);
-#endif
 }
 
 KJ_TEST("co_awaiting an immediate promise suspends if the event loop is not running") {

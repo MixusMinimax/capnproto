@@ -265,8 +265,6 @@ public:
       : taskSet(taskSet), node(kj::mv(nodeParam)) {
     node->setSelfPointer(&node);
     node->onReady(this);
-    // TODO(perf): We could potentially apply the immediately-ready promise coroutine optimization
-    //   here, but fire() deletes itself, and I'm not sure it's worth working around it.
   }
 
   Own<Task> pop() {
@@ -2309,7 +2307,6 @@ ForkHubBase::ForkHubBase(Own<PromiseNode>&& innerParam, ExceptionOrValue& result
     : inner(kj::mv(innerParam)), resultRef(resultRef) {
   inner->setSelfPointer(&inner);
   inner->onReady(this);
-  // TODO(perf): Optimize for coroutines?
 }
 
 Maybe<Own<Event>> ForkHubBase::fire() {
@@ -2780,7 +2777,7 @@ void CoroutineBase::tracePromise(TraceBuilder& builder, bool stopAtNextEvent) {
   }
 
   // Maybe returning the address of coroutine() will give us a function name with meaningful type
-  // information.
+  // information. (Narrator: It doesn't.)
   builder.add(GetFunctorStartAddress<>::apply(coroutine));
 };
 
@@ -2811,7 +2808,7 @@ void CoroutineBase::traceEvent(TraceBuilder& builder) {
   }
 
   // Maybe returning the address of coroutine() will give us a function name with meaningful type
-  // information.
+  // information. (Narrator: It doesn't.)
   builder.add(GetFunctorStartAddress<>::apply(coroutine));
 
   onReadyEvent.traceEvent(builder);
