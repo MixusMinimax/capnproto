@@ -661,7 +661,7 @@ TlsContext::TlsContext(Options options) {
     SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, NULL);
   }
 
-  if (options.ignoreCertificate) {
+  if (options.ignoreCertificates) {
     SSL_CTX_set_cert_verify_callback(ctx, cert_always_true, nullptr);
   }
 
