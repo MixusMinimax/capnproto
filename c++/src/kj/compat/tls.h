@@ -64,6 +64,10 @@ public:
     // (Typically you should set `useSystemTrustStore` false when using this flag, and specify
     // your specific trusted CAs in `trustedCertificates`.)
     // Default: false
+    
+    bool ignoreCertificates;
+    // If true, skip Certificate verification. This is useful if you only care about encryption,
+    // but not trust; i.e. if trust is impossible or not necessary.
 
     kj::ArrayPtr<const TlsCertificate> trustedCertificates;
     // Additional certificates which should be trusted. Default: none.

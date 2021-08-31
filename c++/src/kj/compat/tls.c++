@@ -602,6 +602,7 @@ private:
 TlsContext::Options::Options()
     : useSystemTrustStore(true),
       verifyClients(false),
+      ignoreCertificates(false),
       minVersion(TlsVersion::TLS_1_2),
       cipherList("ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305") {}
 // Cipher list is Mozilla's "intermediate" list, except with classic DH removed since we don't
@@ -617,6 +618,10 @@ struct TlsContext::SniCallback {
 
   static int callback(SSL* ssl, int* ad, void* arg);
 };
+
+static int cert_always_true(X509_STORE_CTX *, void *) {
+  return 1;
+}
 
 TlsContext::TlsContext(Options options) {
   ensureOpenSslInitialized();
@@ -654,6 +659,10 @@ TlsContext::TlsContext(Options options) {
 
   if (options.verifyClients) {
     SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, NULL);
+  }
+
+  if (options.ignoreCertificate) {
+    SSL_CTX_set_cert_verify_callback(ctx, cert_always_true, nullptr);
   }
 
   // honor options.minVersion
