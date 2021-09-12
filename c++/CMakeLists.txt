@@ -42,7 +42,7 @@ else()
   set(CAPNP_LITE_FLAG)
 endif()
 
-set(WITH_OPENSSL "AUTO" CACHE STRING
+set(WITH_OPENSSL "ON" CACHE STRING
   "Whether or not to build libkj-tls by linking against openssl")
 # define list of values GUI will offer for the variable
 set_property(CACHE WITH_OPENSSL PROPERTY STRINGS AUTO ON OFF)
