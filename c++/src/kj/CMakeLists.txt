@@ -177,14 +177,11 @@ set(kj-tls_headers
   compat/readiness-io.h
   compat/tls.h
 )
-message("======== if(NOT CAPNP_LITE) ========")
 if(NOT CAPNP_LITE)
   add_library(kj-tls ${kj-tls_sources})
   add_library(CapnProto::kj-tls ALIAS kj-tls)
   target_link_libraries(kj-tls PUBLIC kj-async)
-  message("======== if(WITH_OPENSSL) ========")
   if (WITH_OPENSSL)
-    message("======== WITH_OPENSSL is ON! ========")
     target_compile_definitions(kj-tls PRIVATE KJ_HAS_OPENSSL)
     target_link_libraries(kj-tls PRIVATE OpenSSL::SSL OpenSSL::Crypto)
   endif()
