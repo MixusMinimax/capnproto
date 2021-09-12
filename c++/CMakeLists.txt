@@ -62,6 +62,7 @@ elseif (WITH_OPENSSL STREQUAL "AUTO")
     set(WITH_OPENSSL OFF)
   endif()
 elseif (WITH_OPENSSL)
+  set(WITH_OPENSSL ON)
   find_package(OpenSSL REQUIRED COMPONENTS Crypto SSL)
 endif()
 
