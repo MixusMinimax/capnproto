@@ -42,7 +42,7 @@ else()
   set(CAPNP_LITE_FLAG)
 endif()
 
-set(WITH_OPENSSL "ON" CACHE STRING
+set(WITH_OPENSSL "AUTO" CACHE STRING
   "Whether or not to build libkj-tls by linking against openssl")
 # define list of values GUI will offer for the variable
 set_property(CACHE WITH_OPENSSL PROPERTY STRINGS AUTO ON OFF)
@@ -53,10 +53,8 @@ set_property(CACHE WITH_OPENSSL PROPERTY STRINGS AUTO ON OFF)
 #         ...
 #     endif()
 if (CAPNP_LITE)
-	message("CAPNP_LITE is set to ON.")
   set(WITH_OPENSSL OFF)
 elseif (WITH_OPENSSL STREQUAL "AUTO")
-	message("WITH_OPENSSL is set to AUTO.")
   find_package(OpenSSL COMPONENTS Crypto SSL)
   if (OPENSSL_FOUND)
     set(WITH_OPENSSL ON)
@@ -64,11 +62,7 @@ elseif (WITH_OPENSSL STREQUAL "AUTO")
     set(WITH_OPENSSL OFF)
   endif()
 elseif (WITH_OPENSSL STREQUAL "ON")
-  message("WITH_OPENSSL is set to ON.")
-  set(WITH_OPENSSL ON)
   find_package(OpenSSL REQUIRED COMPONENTS Crypto SSL)
-else()
-  message("WITH_OPENSSL is set to OFF.")
 endif()
 
 if(MSVC)
